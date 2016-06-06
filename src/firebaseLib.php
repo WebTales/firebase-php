@@ -1,11 +1,6 @@
 <?php
 namespace Firebase;
-
-require_once __DIR__ . '/firebaseInterface.php';
-
 use \Exception;
-
-
 /**
  * Firebase PHP Client Library
  *
@@ -14,7 +9,6 @@ use \Exception;
  * @link   https://www.firebase.com/docs/rest-api.html
  *
  */
-
 /**
  * Firebase PHP Class
  *
@@ -27,7 +21,6 @@ class FirebaseLib implements FirebaseInterface
     private $_baseURI;
     private $_timeout;
     private $_token;
-
     /**
      * Constructor
      *
@@ -39,16 +32,13 @@ class FirebaseLib implements FirebaseInterface
         if ($baseURI == '') {
             trigger_error('You must provide a baseURI variable.', E_USER_ERROR);
         }
-
         if (!extension_loaded('curl')) {
             trigger_error('Extension CURL is not loaded.', E_USER_ERROR);
         }
-
         $this->setBaseURI($baseURI);
         $this->setTimeOut(10);
         $this->setToken($token);
     }
-
     /**
      * Sets Token
      *
@@ -60,7 +50,6 @@ class FirebaseLib implements FirebaseInterface
     {
         $this->_token = $token;
     }
-
     /**
      * Sets Base URI, ex: http://yourcompany.firebase.com/youruser
      *
@@ -73,7 +62,6 @@ class FirebaseLib implements FirebaseInterface
         $baseURI .= (substr($baseURI, -1) == '/' ? '' : '/');
         $this->_baseURI = $baseURI;
     }
-
     /**
      * Returns with the normalized JSON absolute path
      *
@@ -87,7 +75,6 @@ class FirebaseLib implements FirebaseInterface
         $auth = ($this->_token == '') ? '' : '?auth=' . $this->_token;
         return $url . $path . '.json' . $auth;
     }
-
     /**
      * Sets REST call timeout in seconds
      *
@@ -99,7 +86,6 @@ class FirebaseLib implements FirebaseInterface
     {
         $this->_timeout = $seconds;
     }
-
     /**
      * Writing data into Firebase with a PUT request
      * HTTP 200: Ok
@@ -113,7 +99,6 @@ class FirebaseLib implements FirebaseInterface
     {
       return $this->_writeData($path, $data, 'PUT');
     }
-
     /**
      * Pushing data into Firebase with a POST request
      * HTTP 200: Ok
@@ -127,7 +112,6 @@ class FirebaseLib implements FirebaseInterface
     {
       return $this->_writeData($path, $data, 'POST');
     }
-
     /**
      * Updating data into Firebase with a PATH request
      * HTTP 200: Ok
@@ -141,19 +125,19 @@ class FirebaseLib implements FirebaseInterface
     {
       return $this->_writeData($path, $data, 'PATCH');
     }
-
     /**
      * Reading data from Firebase
      * HTTP 200: Ok
      *
      * @param string $path Path
+	 * @param null $query
      *
      * @return array Response
      */
-    public function get($path)
+    public function get($path, $query = NULL)
     {
         try {
-            $ch = $this->_getCurlHandler($path, 'GET');
+            $ch = $this->_getCurlHandler($path, 'GET', $query);
             $return = curl_exec($ch);
             curl_close($ch);
         } catch (Exception $e) {
@@ -161,7 +145,6 @@ class FirebaseLib implements FirebaseInterface
         }
         return $return;
     }
-
     /**
      * Deletes data from Firebase
      * HTTP 204: Ok
@@ -181,7 +164,22 @@ class FirebaseLib implements FirebaseInterface
         }
         return $return;
     }
-
+	/**
+	 * array to query string
+	 *
+	 * @param null $query
+	 *
+	 * @return null|string
+	 */
+	public function getString($query = NULL)
+	{
+		if (!$query) return NULL;
+		$str = '';
+		foreach ($query as $key => $val) {
+			$str .= is_numeric($val) ? '&' . $key . '=' . $val : '&' . $key . '="' . $val . '"';
+		}
+		return $str;
+	}
     /**
      * Returns with Initialized CURL Handler
      *
@@ -189,9 +187,11 @@ class FirebaseLib implements FirebaseInterface
      *
      * @return resource Curl Handler
      */
-    private function _getCurlHandler($path, $mode)
+    private function _getCurlHandler($path, $mode, $query = NULL)
     {
         $url = $this->_getJsonPath($path);
+		$url = $query ? $url . $this->getString($query) : $url;
+		
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_TIMEOUT, $this->_timeout);
@@ -199,10 +199,8 @@ class FirebaseLib implements FirebaseInterface
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $mode);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         return $ch;
     }
-
     private function _writeData($path, $data, $method = 'PUT')
     {
         $jsonData = json_encode($data);
@@ -221,5 +219,4 @@ class FirebaseLib implements FirebaseInterface
         }
         return $return;
     }
-
 }
